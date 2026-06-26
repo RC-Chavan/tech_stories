@@ -69,10 +69,10 @@ services:
       # below lets the first deploy succeed (returns CORS error until you
       # fix it); you will edit this in Step 4 of deploy/README.md.
       - key: ALLOWED_ORIGINS
-        value: https://incident-stories.vercel.app
+        value: https://tech-stories.vercel.app
         syncGroups: [prod]
       - key: PUBLIC_SITE_URL
-        value: https://incident-stories.vercel.app
+        value: https://tech-stories.vercel.app
         syncGroups: [prod]
 
       - key: LOG_LEVEL
