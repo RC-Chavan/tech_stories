@@ -1,0 +1,71 @@
+# docker-compose.yml — local development stack for Incident Stories
+#
+# Usage:
+#   1. cp .env.example .env   (fill in values)
+#   2. docker compose up --build
+#   3. Open http://localhost:3000
+#
+# Notes:
+#   - This compose brings up the FastAPI backend and the Next.js frontend.
+#   - Supabase is expected to be a hosted Supabase project (free tier is fine).
+#     You point the backend + frontend at it via env vars.
+#   - To run a fully self-hosted local Supabase instead, add the supabase CLI:
+#       brew install supabase/tap/supabase
+#       supabase init && supabase start
+#     then set SUPABASE_URL=http://localhost:54321 in your .env.
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: incident-stories-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Supabase
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      # LLM
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL:-minimax-m3}
+      # CORS — frontend container talks to backend via service name, but browser
+      # calls come from localhost:3000, so include both.
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-60}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Build-time public env vars (inlined into the bundle by Next.js)
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    container_name: incident-stories-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      # Runtime (non-public) env vars could go here. The app reads
+      # NEXT_PUBLIC_* at build time, so those go in `args:` above.
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

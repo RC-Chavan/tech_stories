@@ -1,0 +1,93 @@
+# docker-compose.dev.yml — development override.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# What this changes vs. the base file:
+#   - Switches both services to their Dockerfile.dev (no multi-stage build, dev deps)
+#   - Bind-mounts source from the host for live reload
+#   - Disables the frontend healthcheck (Next dev server sometimes returns early non-200s)
+#   - Removes `depends_on: service_healthy` so the frontend boots in parallel with the backend
+#   - Runs as the same UID/GID as your host user to avoid file-permission headaches on Linux
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    image: incident-stories-backend:dev
+    container_name: incident-stories-backend-dev
+    # Override command from Dockerfile.dev with explicit reload + poll watching.
+    command: >
+      uvicorn app.main:app
+        --host 0.0.0.0
+        --port 8000
+        --reload
+        --reload-dir /app/app
+    volumes:
+      # Mount source; exclude the venv so the container's site-packages stay intact.
+      - ./backend/app:/app/app:rw
+      - ./backend/supabase:/app/supabase:rw
+      - ./backend/.env:/app/.env:ro
+      # Anonymous volume keeps the container's site-packages from being clobbered.
+      - backend-venv:/app/.venv
+    environment:
+      # Override the base CORS — Next dev server also runs on 3000 but the API URL
+      # used by the browser still comes from the frontend container's env.
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      PYTHONUNBUFFERED: "1"
+      # Explicit overrides so a stale shell value (e.g. SUPABASE_URL with a
+      # /rest/v1/ suffix leaking from the host) can't shadow what's in
+      # backend/.env. Same values used by base compose but pinned here.
+      SUPABASE_URL: ${SUPABASE_URL_BACKEND:-https://oydbbjkhudtvseqvgdhy.supabase.co}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.ai/api/v1}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL:-meta-llama/llama-3.3-70b-instruct:free}
+      REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-120}
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    image: incident-stories-frontend:dev
+    container_name: incident-stories-frontend-dev
+    command: npm run dev
+    # Don't wait for backend to be healthy in dev — frontend boots in parallel
+    # and Next's API routes will retry on first request.
+    depends_on:
+      - backend
+    volumes:
+      # Mount source EXCEPT node_modules (host's node_modules won't work in container).
+      - ./frontend/app:/app/app:rw
+      - ./frontend/components:/app/components:rw
+      - ./frontend/hooks:/app/hooks:rw
+      - ./frontend/lib:/app/lib:rw
+      - ./frontend/public:/app/public:rw
+      - ./frontend/.env.local:/app/.env.local:ro
+      - ./frontend/next.config.js:/app/next.config.js:ro
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./frontend/postcss.config.js:/app/postcss.config.js:ro
+      - ./frontend/tsconfig.json:/app/tsconfig.json:ro
+      # NOTE: do NOT mount an anonymous volume over /app/node_modules here.
+      # Dockerfile.dev already bakes the correct linux node_modules into the
+      # image; an anonymous volume would shadow it with stale/empty contents.
+      # .next cache is still OK to mount anonymously.
+      - frontend-next-cache:/app/.next
+    environment:
+      # .env.local is bind-mounted above and read by Next at startup.
+      # Do NOT set NEXT_PUBLIC_* here — empty strings still count as "set"
+      # to Next.js and override the .env.local file (causing the
+      # "Missing NEXT_PUBLIC_SUPABASE_URL" error on the login page).
+      NODE_ENV: development
+      # Polling helps with file watching on macOS Docker Desktop.
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    healthcheck:
+      # Disable in dev — Next dev server can take a while to be ready and that's fine.
+      disable: true
+
+volumes:
+  backend-venv:
+  frontend-next-cache:

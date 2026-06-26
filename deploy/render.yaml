@@ -1,0 +1,88 @@
+# Render Blueprint — Incident Stories backend
+#
+# This file lets you provision the backend as infrastructure-as-code via
+# Render's "New + → Blueprint" flow. It's optional — you can also deploy
+# manually via "New + → Web Service" and fill the dashboard form. The
+# Blueprint is more reproducible (one YAML to review in PRs) but the
+# dashboard form is more forgiving when you want to change one env var
+# without redeploying everything.
+#
+# What this does:
+#   - Provisions one web service named "incident-stories-api"
+#   - Builds from ./backend/Dockerfile
+#   - Runs on Render's free plan
+#   - Health-checks GET /health
+#   - Sets runtime env vars from the `envVars` block
+#
+# IMPORTANT — syncGroups below let you promote env var changes WITHOUT a
+# full redeploy. For example, fixing ALLOWED_ORIGINS later (Step 4) just
+# needs a click in the dashboard.
+#
+# Setup:
+#   1. Render dashboard → New + → Blueprint
+#   2. Point Render at the repo containing this file
+#   3. Render parses this YAML and shows you the service + envs
+#   4. Fill in the env values from deploy/render.env.example / secrets-checklist.md
+#   5. Click Apply
+#
+# Docs:
+#   https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: incident-stories-api
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+
+    healthCheckPath: /health
+    autoDeploy: true
+
+    # Keep these envs out of source control. syncGroups="prod" means a
+    # later dashboard edit to any of these triggers a restart that picks
+    # up the new value without a full redeploy.
+    envVars:
+      - key: SUPABASE_URL
+        syncGroups: [prod]
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        syncGroups: [prod]
+        generateValue: false   # you provide this in the dashboard
+
+      - key: LLM_BASE_URL
+        value: https://openrouter.ai/api/v1
+        syncGroups: [prod]
+      - key: LLM_API_KEY
+        syncGroups: [prod]
+        generateValue: false   # you provide this in the dashboard
+      - key: LLM_MODEL
+        value: meta-llama/llama-3.3-70b-instruct:free
+        syncGroups: [prod]
+      - key: REQUEST_TIMEOUT_SECONDS
+        value: "120"
+        syncGroups: [prod]
+
+      # Set ALLOWED_ORIGINS *after* your Vercel URL is known. The placeholder
+      # below lets the first deploy succeed (returns CORS error until you
+      # fix it); you will edit this in Step 4 of deploy/README.md.
+      - key: ALLOWED_ORIGINS
+        value: https://incident-stories.vercel.app
+        syncGroups: [prod]
+      - key: PUBLIC_SITE_URL
+        value: https://incident-stories.vercel.app
+        syncGroups: [prod]
+
+      - key: LOG_LEVEL
+        value: INFO
+        syncGroups: [prod]
+
+      # Resend (email notifications) — leave empty for v0.
+      - key: RESEND_API_KEY
+        syncGroups: [prod]
+        generateValue: false
+      - key: RESEND_FROM_EMAIL
+        syncGroups: [prod]
+        generateValue: false

@@ -1,0 +1,22 @@
+.git/
+.gitignore
+.DS_Store
+node_modules/
+.venv/
+.next/
+__pycache__/
+*.pyc
+*.log
+coverage/
+.vscode/
+.idea/
+
+# Env files outside of compose context
+.env
+.env.*
+
+# Plans / docs / dev artifacts — not needed in images
+plans/
+execute/
+README.md
+CLAUDE.md

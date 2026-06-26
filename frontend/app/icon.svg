@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Rounded dark square base, matches --themeColor #09090b -->
+  <rect width="64" height="64" rx="14" fill="#09090b"/>
+  <!-- Brand teal pulse ring, matches brand-400 #22d3ee -->
+  <circle cx="32" cy="32" r="14" stroke="#22d3ee" stroke-width="3.5" opacity="0.35"/>
+  <!-- Inner solid pulse dot, matches brand-500 #06b6d4 -->
+  <circle cx="32" cy="32" r="7" fill="#22d3ee"/>
+</svg>

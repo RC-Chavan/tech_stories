@@ -1,0 +1,25 @@
+# Frontend dev Dockerfile — used by docker-compose.dev.yml.
+# Single-stage: runs `next dev` with source bind-mounted from the host.
+
+FROM node:20-alpine
+
+ENV NODE_ENV=development \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0 \
+    WATCHPACK_POLLING=true \
+    CHOKIDAR_USEPOLLING=true
+
+WORKDIR /app
+
+# Install deps first (better layer caching). node_modules lives in the image;
+# in dev mode we DON'T mount it from the host — the container's node_modules
+# (built for linux) must be used, not the host's.
+COPY package.json package-lock.json* ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# Source is bind-mounted from host in docker-compose.dev.yml.
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
