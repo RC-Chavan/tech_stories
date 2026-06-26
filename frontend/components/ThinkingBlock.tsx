@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Brain, ChevronDown } from "lucide-react";
 
 /**
@@ -18,6 +21,10 @@ export function ThinkingBlock({
   /** "default" is for the public story page; "admin" uses a more saturated style. */
   variant?: "default" | "admin";
 }) {
+  // <details> only exposes a boolean `open` attribute (no `defaultOpen`), so we
+  // seed the open state from `defaultOpen` on mount and then let the user toggle.
+  const [open, setOpen] = useState(defaultOpen);
+
   if (!notes || notes.trim().length === 0) return null;
 
   const isAdmin = variant === "admin";
@@ -32,7 +39,8 @@ export function ThinkingBlock({
 
   return (
     <details
-      defaultOpen={defaultOpen}
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
       className="card group/open overflow-hidden"
     >
       <summary className="flex cursor-pointer list-none items-start gap-3 [&::-webkit-details-marker]:hidden">
