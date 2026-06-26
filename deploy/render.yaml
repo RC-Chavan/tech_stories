@@ -34,7 +34,7 @@ services:
     runtime: docker
     plan: free
     region: oregon
-    branch: main
+    branch: develop
     rootDir: backend
     dockerfilePath: ./Dockerfile
     dockerContext: .
