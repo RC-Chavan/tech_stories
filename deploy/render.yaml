@@ -47,17 +47,18 @@ services:
     # up the new value without a full redeploy.
     envVars:
       - key: SUPABASE_URL
+        generateValue: true
         syncGroups: [prod]
       - key: SUPABASE_SERVICE_ROLE_KEY
-        syncGroups: [prod]
-        generateValue: false   # you provide this in the dashboard
+        generateValue: true   # you override this in the dashboard
+        syncGroups: [prod]   # promote the override without redeploy
 
       - key: LLM_BASE_URL
         value: https://openrouter.ai/api/v1
         syncGroups: [prod]
       - key: LLM_API_KEY
-        syncGroups: [prod]
-        generateValue: false   # you provide this in the dashboard
+        generateValue: true   # you override this in the dashboard
+        syncGroups: [prod]   # promote the override without redeploy
       - key: LLM_MODEL
         value: meta-llama/llama-3.3-70b-instruct:free
         syncGroups: [prod]
@@ -79,10 +80,11 @@ services:
         value: INFO
         syncGroups: [prod]
 
-      # Resend (email notifications) — leave empty for v0.
+      # Resend (email notifications) — leave the generated placeholder;
+      # the backend treats empty values as a logged no-op (see app/email.py).
       - key: RESEND_API_KEY
+        generateValue: true
         syncGroups: [prod]
-        generateValue: false
       - key: RESEND_FROM_EMAIL
-        syncGroups: [prod]
-        generateValue: false
+        generateValue: true
+        syncGroups: [prod]    # promote dashboard edit without redeploy
